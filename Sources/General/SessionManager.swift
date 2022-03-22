@@ -87,6 +87,7 @@ public class SessionManager {
         var runningTasks: [DownloadTask] = []
         var restartTasks: [DownloadTask] = []
         var succeededTasks: [DownloadTask] = []
+        var credentialDic = [String:URLCredential]()
         var speed: Int64 = 0
         var timeRemaining: Int64 = 0
         
@@ -131,6 +132,21 @@ public class SessionManager {
         set { protectedState.write { $0.timer = newValue } }
     }
 
+    public func setCredential(baseUrlString: String, credential:URLCredential){
+        protectedState.write { state in
+            state.credentialDic[baseUrlString] = credential
+        }
+    }
+    
+    public func getCredential(baseUrlString: String) -> URLCredential?{
+        let dic = protectedState.wrappedValue.credentialDic;
+        return dic[baseUrlString];
+    }
+    
+    public func getFirstCredential() -> URLCredential?{
+        let dic = protectedState.wrappedValue.credentialDic;
+        return dic.first?.value;
+    }
     
     public private(set) var status: Status {
         get { protectedState.wrappedValue.status }
@@ -142,7 +158,6 @@ public class SessionManager {
             log(.sessionManager(newValue.rawValue, manager: self))
         }
     }
-    
     
     public private(set) var tasks: [DownloadTask] {
         get { protectedState.wrappedValue.tasks }

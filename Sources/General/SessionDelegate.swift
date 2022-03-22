@@ -41,8 +41,7 @@ extension SessionDelegate: URLSessionDownloadDelegate {
     public func urlSessionDidFinishEvents(forBackgroundURLSession session: URLSession) {
         manager?.didFinishEvents(forBackgroundURLSession: session)
     }
-    
-    
+
     public func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didWriteData bytesWritten: Int64, totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64) {
         guard let manager = manager else { return }
         guard let currentURL = downloadTask.currentRequest?.url else { return }
@@ -91,6 +90,34 @@ extension SessionDelegate: URLSessionDownloadDelegate {
             } else {
                 manager.log(.error("urlSession(_:task:didCompleteWithError:)", error: TiercelError.unknown))
             }
+        }
+    }
+}
+
+extension SessionDelegate: URLSessionDelegate {
+    func urlSession(_ session: URLSession, task: URLSessionTask, didReceive challenge: URLAuthenticationChallenge, completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
+        guard let currentURL = task.currentRequest?.url?.baseURL else {
+            authenticate(didReceive: challenge, credential: nil, completionHandler: completionHandler)
+            return
+        }
+        
+        let credential = manager?.getCredential(baseUrlString: currentURL.absoluteString)
+        authenticate(didReceive: challenge, credential: credential, completionHandler: completionHandler)
+    }
+    
+    func urlSession(_ session: URLSession, didReceive challenge: URLAuthenticationChallenge, completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
+        let credential = manager?.getFirstCredential()
+        authenticate(didReceive: challenge, credential: credential, completionHandler: completionHandler)
+    }
+    
+    private func authenticate(didReceive challenge: URLAuthenticationChallenge, credential:URLCredential?, completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
+        switch (challenge.previousFailureCount, credential != nil) {
+        case (0...1, true):
+            completionHandler(.useCredential, credential)
+        case (0, false):
+            completionHandler(.useCredential, challenge.proposedCredential)
+        default:
+            completionHandler(.performDefaultHandling, nil)
         }
     }
 }
